@@ -35,5 +35,6 @@ func ins(n ast.Node, pass *analysis.Pass) bool {
 	if !ok {
 		return true
 	}
+	sel := selector.Sel
 	return true
 }
