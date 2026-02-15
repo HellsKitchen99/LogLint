@@ -2,6 +2,9 @@ package loglint
 
 import (
 	"go/ast"
+	"go/token"
+	"strconv"
+	"unicode"
 
 	"golang.org/x/tools/go/analysis"
 )
@@ -83,12 +86,33 @@ func ins(n ast.Node, pass *analysis.Pass) bool {
 
 // получения содержимого лога
 func extractMessage(call *ast.CallExpr) (string, bool) {
-
+	args := call.Args
+	if len(args) == 0 {
+		return "", false
+	}
+	basicLit, ok := args[0].(*ast.BasicLit)
+	if !ok {
+		return "", false
+	}
+	if basicLit.Kind != token.STRING {
+		return "", false
+	}
+	basicLitValue, err := strconv.Unquote(basicLit.Value)
+	if err != nil {
+		return "", false
+	}
+	return basicLitValue, true
 }
 
 // проверка на регистр
 func checkLowerCase(msg string, call *ast.CallExpr, pass *analysis.Pass) bool {
-
+	for _, letter := range msg {
+		if unicode.IsUpper(letter) {
+			pass.Reportf(call.Pos(), "log message must not contain upper case letters")
+			return false
+		}
+	}
+	return true
 }
 
 // проверка на язык
