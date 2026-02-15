@@ -136,7 +136,19 @@ func checkEnglish(msg string, call *ast.CallExpr, pass *analysis.Pass) bool {
 
 // проверка на спец символы
 func checkNoSpecialChars(msg string, call *ast.CallExpr, pass *analysis.Pass) bool {
-
+	isAllowed := func(letter rune) bool {
+		if letter >= 'a' && letter <= 'z' || letter >= '0' && letter <= '9' || letter == ' ' || letter == '_' || letter == '-' {
+			return true
+		}
+		return false
+	}
+	for _, letter := range msg {
+		if !isAllowed(letter) {
+			pass.Reportf(call.Pos(), "log message must not contain special symbols")
+			return false
+		}
+	}
+	return true
 }
 
 // проверка на важные данные
