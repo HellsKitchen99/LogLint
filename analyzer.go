@@ -117,7 +117,21 @@ func checkLowerCase(msg string, call *ast.CallExpr, pass *analysis.Pass) bool {
 
 // проверка на язык
 func checkEnglish(msg string, call *ast.CallExpr, pass *analysis.Pass) bool {
-
+	isEnglishLetter := func(letter rune) bool {
+		if letter >= 'a' && letter <= 'z' {
+			return true
+		}
+		return false
+	}
+	for _, letter := range msg {
+		if unicode.IsLetter(letter) {
+			if !isEnglishLetter(letter) {
+				pass.Reportf(call.Pos(), "log message must consist only of English letters")
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // проверка на спец символы
