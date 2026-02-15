@@ -1,7 +1,6 @@
 info:
 	cloc .
 run-test:
-	go test 
 	go test -cover 
 coverage:
 	go test -coverprofile=coverage.out 
