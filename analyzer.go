@@ -4,6 +4,7 @@ import (
 	"go/ast"
 	"go/token"
 	"strconv"
+	"strings"
 	"unicode"
 
 	"golang.org/x/tools/go/analysis"
@@ -81,14 +82,56 @@ func ins(n ast.Node, pass *analysis.Pass) bool {
 		return true
 	}
 	// дальнейшая логика
+	args, ok := extractMessage(call)
+	if !ok {
+		return true
+	}
+	switch needArgs := args.(type) {
+	case string:
+		isLower := checkLowerCase(needArgs, call, pass)
+		isEnglish := checkEnglish(needArgs, call, pass)
+		isNoSpecial := checkNoSpecialChars(needArgs, call, pass)
+		if !isLower || !isEnglish || !isNoSpecial {
+			return true
+		}
+	case []ast.Expr:
+		basicLit, ok := needArgs[0].(*ast.BasicLit)
+		if !ok {
+			return true
+		}
+		if basicLit.Kind != token.STRING {
+			return true
+		}
+		basicLitValue, err := strconv.Unquote(basicLit.Value)
+		if err != nil {
+			return true
+		}
+		isLower := checkLowerCase(basicLitValue, call, pass)
+		isEnglish := checkEnglish(basicLitValue, call, pass)
+		isNoSpecial := checkNoSpecialChars(basicLitValue, call, pass)
+		isSensitive := checkSensitive(needArgs, call, pass)
+		if !isLower || !isEnglish || !isNoSpecial || !isSensitive {
+			return true
+		}
+	default:
+		return true
+	}
 	return true
 }
 
+/*func sendReport(pos token.Pos, msg string, pass *analysis.Pass, args ...any) {
+	pass.Reportf(pos, msg)
+}*/
+
 // получения содержимого лога
-func extractMessage(call *ast.CallExpr) (string, bool) {
+func extractMessage(call *ast.CallExpr) (any, bool) {
 	args := call.Args
 	if len(args) == 0 {
 		return "", false
+	}
+	if len(args) > 1 {
+		args := extractArgs(call)
+		return args, true
 	}
 	basicLit, ok := args[0].(*ast.BasicLit)
 	if !ok {
@@ -152,6 +195,96 @@ func checkNoSpecialChars(msg string, call *ast.CallExpr, pass *analysis.Pass) bo
 }
 
 // проверка на важные данные
-func checkSensitive(msg string, call *ast.CallExpr, pass *analysis.Pass) bool {
+func checkSensitive(args []ast.Expr, call *ast.CallExpr, pass *analysis.Pass) bool {
+	for _, arg := range args {
+		switch needArg := arg.(type) {
+		case *ast.BasicLit:
+			if needArg.Kind != token.STRING {
+				return true
+			}
+			needValueUnquoted, err := strconv.Unquote(needArg.Value)
+			if err != nil {
+				continue
+			}
+			if blackList[strings.ToLower(needValueUnquoted)] {
+				pass.Reportf(call.Pos(), "log message must not contain important data")
+				return false
+			}
+		case *ast.Ident:
+			if blackList[strings.ToLower(needArg.Name)] {
+				pass.Reportf(call.Pos(), "log message must not contain important data")
+				return false
+			}
+		case *ast.SelectorExpr:
+			if blackList[strings.ToLower(needArg.Sel.Name)] {
+				pass.Reportf(call.Pos(), "log message must not contain important data")
+				return false
+			}
+		default:
+			continue
+		}
+	}
+	return true
+}
 
+var blackList = map[string]bool{
+	// passwords
+	"password":     true,
+	"passwd":       true,
+	"pwd":          true,
+	"pass":         true,
+	"userpassword": true,
+	"dbpassword":   true,
+	"rootpassword": true,
+
+	// tokens / auth
+	"token":         true,
+	"accesstoken":   true,
+	"refreshtoken":  true,
+	"jwt":           true,
+	"jwttoken":      true,
+	"bearer":        true,
+	"authorization": true,
+	"auth":          true,
+	"session":       true,
+	"sessionid":     true,
+
+	// keys
+	"secret":       true,
+	"secretkey":    true,
+	"privatekey":   true,
+	"apikey":       true,
+	"api_key":      true,
+	"accesskey":    true,
+	"clientsecret": true,
+
+	// payments
+	"card":          true,
+	"cardnumber":    true,
+	"cvv":           true,
+	"cvc":           true,
+	"iban":          true,
+	"accountnumber": true,
+
+	// PII
+	"email":       true,
+	"phone":       true,
+	"phonenumber": true,
+	"passport":    true,
+	"ssn":         true,
+	"inn":         true,
+	"snils":       true,
+	"address":     true,
+
+	// DB
+	"dsn":              true,
+	"connectionstring": true,
+	"connstring":       true,
+	"databaseurl":      true,
+	"dburl":            true,
+}
+
+func extractArgs(call *ast.CallExpr) []ast.Expr {
+	args := call.Args
+	return args
 }
