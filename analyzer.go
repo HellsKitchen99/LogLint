@@ -47,7 +47,26 @@ func ins(n ast.Node, pass *analysis.Pass) bool {
 	if !ok {
 		return true
 	}
-	x, ok := selector.X.(*ast.Ident)
+	var needX any
+	switch x := selector.X.(type) {
+	case *ast.Ident:
+		needX = x
+	case *ast.CallExpr:
+		subFunName := x.Fun
+		subSelector, ok := subFunName.(*ast.SelectorExpr)
+		if !ok {
+			return true
+		}
+		subX := subSelector.X
+		subXIdent, ok := subX.(*ast.Ident)
+		if !ok {
+			return true
+		}
+		needX = subXIdent
+	default:
+		return true
+	}
+	x, ok := needX.(*ast.Ident)
 	if !ok {
 		return true
 	}
@@ -58,5 +77,6 @@ func ins(n ast.Node, pass *analysis.Pass) bool {
 	if !allowedMethods[sel.Name] {
 		return true
 	}
+	// дальнейшая логика
 	return true
 }
