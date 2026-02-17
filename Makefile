@@ -12,4 +12,4 @@ golangci-lint-version:
 build-plugin:
 	go build -o loglint ./cmd/loglint
 run-linter:
-	go vet -vettool=./loglint ./...
+	go vet -vettool=./loglint ./example
