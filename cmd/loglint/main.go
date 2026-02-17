@@ -1,7 +1,7 @@
 package main
 
 import (
-	loglint "selectel"
+	loglint "github.com/HellsKitchen99/LogLint"
 
 	"golang.org/x/tools/go/analysis/singlechecker"
 )

@@ -1,4 +1,4 @@
-module selectel
+module github.com/HellsKitchen99/LogLint
 
 go 1.24.0
 

@@ -1,11 +1,13 @@
 package main
 
 import (
-	loglint "selectel"
+	loglint "github.com/HellsKitchen99/LogLint"
 
 	"golang.org/x/tools/go/analysis"
 )
 
-var AnalyzerPlugin = []*analysis.Analyzer{
-	loglint.Analyzer,
+func New(conf any) ([]*analysis.Analyzer, error) {
+	return []*analysis.Analyzer{
+		loglint.Analyzer,
+	}, nil
 }
