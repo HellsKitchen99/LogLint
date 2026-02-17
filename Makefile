@@ -10,6 +10,6 @@ go-version:
 golangci-lint-version:
 	golangci-lint --version
 build-plugin:
-	go build -buildmode=plugin -o loglint.so ./plugin
+	go build -o loglint ./cmd/loglint
 run-linter:
-	
+	go vet -vettool=./loglint ./...
